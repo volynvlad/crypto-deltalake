@@ -12,9 +12,9 @@ from os.path import exists
 from typing import Any
 
 import websockets
-from deltalake import DeltaTable, write_deltalake
+from deltalake import DeltaTable
 from dotenv import load_dotenv
-from polars import DataFrame, Date, Datetime, Float64, Schema, String
+from polars import DataFrame, Datetime, Float64, Schema, String
 from websockets.exceptions import ConnectionClosed
 
 from logger import get_logger
@@ -124,8 +124,7 @@ async def get_liquidations(schema):
                 logger.info(f"{data=}")
                 if "error" in data:
                     logger.error(data["error"])
-                    raise
-                if "result" in data:
+                if "result" in data or "E" not in data:
                     continue
                 df = process_response(data, schema)
                 df.write_delta(TABLES_PATH, mode="append")

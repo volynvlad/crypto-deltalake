@@ -14,3 +14,8 @@ uv run main.py
 ```sh
 uv run read.py
 ```
+# Check memory of the tables dir
+
+```sh
+./bin/check_memory.sh
+```

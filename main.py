@@ -31,6 +31,12 @@ BASE_POINT_SYMBOL = "wss://stream.binance.com/ws/{symbol}@{event_type}"
 TABLES_PATH = "tables/liquidation"
 
 
+#TODO
+# - Create separate files
+# - README
+# - Create script to check inserted data
+
+
 class EventType(StrEnum):
     FORCE_ORDER = "!forceOrder@arr"
     KLINE = "kline_{interval}".format(interval="1m")

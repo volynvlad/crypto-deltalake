@@ -8,3 +8,9 @@ Getting data from websockets and store them into deltalake.
 ```sh
 uv run main.py
 ```
+
+# Read inserted data
+
+```sh
+uv run read.py
+```

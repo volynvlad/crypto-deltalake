@@ -34,7 +34,6 @@ TABLES_PATH = "tables/liquidation"
 #TODO
 # - Create separate files
 # - README
-# - Create script to check inserted data
 
 
 class EventType(StrEnum):
@@ -76,9 +75,11 @@ def process_response(data: dict[str, Any], schema: Schema) -> DataFrame:
 async def keepalive(websocket, ping_interval=30):
     for ping in itertools.count():
         await asyncio.sleep(ping_interval)
+        request = json.dumps({"ping": ping})
         try:
-            await websocket.send(json.dumps({"ping": ping}))
-        except ConnectionClosed:
+            await websocket.send(request)
+        except ConnectionClosed as e:
+            logger.error(f"{request=}. ConnectionClosed: {e}")
             break
 
 
@@ -104,11 +105,6 @@ async def get_liquidations(schema):
     """
     url = "wss://fstream.binance.com/ws"
 
-    # delta_merge_options = {
-    #     "source_alias": "source",
-    #     "target_alias": "target",
-    #     "predicate": "(target.time = source.time) and (target.price != source.price)"
-    # }
     async with websockets.connect(url) as websocket:
         subscribe_message = {
             "method": "SUBSCRIBE",
@@ -117,30 +113,25 @@ async def get_liquidations(schema):
         }
         await websocket.send(json.dumps(subscribe_message))
         while True:
-            keepalive_task = asyncio.create_task(keepalive(websocket))
-            try:
-                response = await websocket.recv()
-                data = json.loads(response)
-                logger.info(f"{data=}")
-                if "error" in data:
-                    logger.error(data["error"])
-                if "result" in data or "E" not in data:
-                    continue
-                df = process_response(data, schema)
-                df.write_delta(TABLES_PATH, mode="append")
+            response = await websocket.recv()
+            data = json.loads(response)
+            logger.debug(f"{data=}")
+            if "error" in data:
+                logger.error(data["error"])
+            if "result" in data or "E" not in data:
+                continue
+            df = process_response(data, schema)
+            df.write_delta(TABLES_PATH, mode="append")
 
-                if datetime.now().hour == 0:
-                    dt = DeltaTable(TABLES_PATH)
-                    dt.optimize.compact()
-                    dt.vacuum(retention_hours=24)
-            finally:
-                keepalive_task.cancel()
+            if datetime.now().hour == 0:
+                dt = DeltaTable(TABLES_PATH)
+                dt.optimize.compact()
+                dt.vacuum(retention_hours=24)
 
 
 def main():
     if not exists(TABLES_PATH):
         makedirs(TABLES_PATH)
-    # dt = DeltaTable(TABLES_PATH)
     schema = Schema({
         "time": Datetime("us"),
         "symbol": String(),
@@ -149,7 +140,6 @@ def main():
         "price": Float64,
         "avg_price": Float64,
     })
-    # dt.create(TABLES_PATH, schema=schema, mode="ignore")
     asyncio.run(get_liquidations(schema))
 
 

@@ -8,7 +8,7 @@ load_dotenv()
 
 LOG_FILE: str = "./crypto_deltalake.log"
 LOG_FORMAT: str = "[{name}]-[%(levelname)s]-[%(asctime)s]-[%(message)s]"
-IS_LOG_TO_FILE: bool = getenv("LOG_TO_FILE", "False").lower() == "true"
+IS_LOG_TO_FILE: bool = getenv("LOG_TO_FILE", "true").lower() == "true"
 IS_LOG_TO_TERMINAL: bool = getenv("LOG_TO_TERMINAL", "True").lower() == "true"
 FILE_LEVEL: int = logging.DEBUG
 TERMINAL_LEVEL: int = logging.INFO

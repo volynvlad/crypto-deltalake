@@ -19,3 +19,16 @@ uv run crypto_deltalake/read.py
 ```sh
 ./bin/check_tables.sh
 ```
+
+# Run in jupyter
+```bash
+   uv add ipykernel --dev
+   python -m ipykernel install --user --name=crypto_deltalake --display-name=crypto_deltalake
+```
+
+Expected output
+
+```sh
+Installed kernelspec crypto_deltalake in /home/vlad/.local/share/jupyter/kernels/crypto_deltalake
+```
+

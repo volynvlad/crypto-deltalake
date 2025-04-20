@@ -14,8 +14,8 @@ uv run crypto_deltalake/main.py
 ```sh
 uv run crypto_deltalake/read.py
 ```
-# Check memory of the tables dir
+# Check info of the tables dir
 
 ```sh
-./bin/check_memory.sh
+./bin/check_tables.sh
 ```

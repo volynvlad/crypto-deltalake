@@ -1,20 +1,18 @@
 """
 https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Liquidation-Order-Streams
 """
-from datetime import datetime
 import json
 import os
-
-from deltalake import DeltaTable
+from datetime import datetime
 
 from config import get_logger
-from polars import DataFrame, Datetime, Float64, Schema, String
-
+from deltalake import DeltaTable, write_deltalake
+from polars import DataFrame, Datetime, Float64, LazyFrame, Schema, String, read_delta, scan_delta
 
 logger = get_logger(__name__)
 
 
-class WriteLiquidations:
+class LiquidationsData:
     schema = Schema({
         "time": Datetime("us"),
         "symbol": String(),
@@ -22,11 +20,16 @@ class WriteLiquidations:
         "original_quantity": Float64,
         "price": Float64,
         "avg_price": Float64,
+        "status": String(),
+        "last_filled_quantity": Float64,
+        "filled_accum_quantity": Float64,
     })
+
     def __init__(self, table_path: str) -> None:
         self.table_path = table_path
         os.makedirs(os.path.dirname(self.table_path), exist_ok=True)
         logger.info(f"Table: {self.table_path} exists.")
+        self.delta_table: DeltaTable = DeltaTable(self.table_path)
 
     def process(self, response):
         self.data = DataFrame(
@@ -37,18 +40,31 @@ class WriteLiquidations:
                 "original_quantity": float(response['o']['q']),
                 "price": float(response['o']['p']),
                 "avg_price": float(response['o']['ap']),
+                "status": response["o"]["X"],
+                "last_filled_quantity": float(response["o"]["l"]),
+                "filled_accum_quantity": float(response["o"]["z"]),
             },
             schema=self.schema,
         )
 
     def write_data(self):
-        self.data.write_delta(self.table_path, mode="append")
+        write_deltalake(self.table_path, data=self.data, mode="append", schema_mode="merge")
 
-    def optimize(self):
-        if datetime.now().hour == 0:
-            dt = DeltaTable(self.table_path)
-            optimize_metrics = dt.optimize.compact()
+    def optimize(self, force: bool = False, retention_hours: int = 0, dry_run: bool = False, z_order: list[str] | None = None):
+        z_order = z_order or ["symbol"]
+        if force or datetime.now().minute == 0:
+            optimize_metrics = self.delta_table.optimize.z_order(z_order)
             logger.info(f"{optimize_metrics=}")
+            self.delta_table.vacuum(retention_hours=retention_hours, dry_run=dry_run, enforce_retention_duration=False)
+
+    def clean_metadata(self):
+        self.delta_table.cleanup_metadata()
+
+    def read_delta_table(self) -> DataFrame:
+        return read_delta(self.table_path)
+
+    def scan_delta_table(self) -> LazyFrame:
+        return scan_delta(self.table_path)
 
     def run(self, response):
         try:

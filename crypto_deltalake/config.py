@@ -14,6 +14,10 @@ FILE_LEVEL: int = logging.DEBUG
 TERMINAL_LEVEL: int = logging.INFO
 
 
+API_KEY = getenv("API_KEY", "")
+TABLE_LIQUIDATION_PATH = "tables/liquidation"
+
+
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -29,3 +33,4 @@ def get_logger(name: str) -> logging.Logger:
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
     return logger
+

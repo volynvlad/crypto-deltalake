@@ -6,14 +6,22 @@ import os
 from datetime import datetime
 
 from config import get_logger
-from deltalake import DeltaTable, write_deltalake
+from deltalake import DeltaTable, Field, write_deltalake
+from deltalake import Schema as DlShema
 from polars import DataFrame, Datetime, Float64, LazyFrame, Schema, String, read_delta, scan_delta
 
 logger = get_logger(__name__)
 
 
+reverse_type_mapping = {
+    Float64: "double",
+    String: "string",
+    Datetime("us"): "timestamp",
+}
+
+
 class LiquidationsData:
-    schema = Schema({
+    field_to_type = {
         "time": Datetime("us"),
         "symbol": String(),
         "side": String(),
@@ -23,13 +31,22 @@ class LiquidationsData:
         "status": String(),
         "last_filled_quantity": Float64,
         "filled_accum_quantity": Float64,
-    })
+    }
+    polars_schema = Schema(field_to_type)
+    delta_schema = DlShema(
+        [
+            Field(name=name, type=reverse_type_mapping[dtype], nullable=False)
+            for name, dtype in field_to_type.items()
+        ]
+    )
 
     def __init__(self, table_path: str) -> None:
         self.table_path = table_path
         os.makedirs(os.path.dirname(self.table_path), exist_ok=True)
         logger.info(f"Table: {self.table_path} exists.")
+        DeltaTable.create(self.table_path, self.delta_schema, mode="ignore")
         self.delta_table: DeltaTable = DeltaTable(self.table_path)
+
 
     def process(self, response):
         self.data = DataFrame(
@@ -44,7 +61,7 @@ class LiquidationsData:
                 "last_filled_quantity": float(response["o"]["l"]),
                 "filled_accum_quantity": float(response["o"]["z"]),
             },
-            schema=self.schema,
+            schema=self.polars_schema,
         )
 
     def write_data(self):

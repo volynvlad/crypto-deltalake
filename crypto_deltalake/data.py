@@ -35,7 +35,7 @@ class LiquidationsData:
     polars_schema = Schema(field_to_type)
     delta_schema = DlShema(
         [
-            Field(name=name, type=reverse_type_mapping[dtype], nullable=False)
+            Field(name=name, type=reverse_type_mapping[dtype], nullable=False)  # type: ignore
             for name, dtype in field_to_type.items()
         ]
     )
